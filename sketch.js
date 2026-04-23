@@ -192,11 +192,17 @@ function generateMapTexture(pg) {
 }
 
 function drawRoute() {
-  stroke(101, 67, 33, 180); 
+  push();
+  stroke(101, 67, 33, 200); 
   strokeWeight(8); // 棕色粗線主要設計
   noFill();
+  
+  // 增加路徑陰影，模擬厚重的墨水感
+  drawingContext.shadowBlur = 6;
+  drawingContext.shadowColor = 'rgba(60, 30, 10, 0.4)';
+  drawingContext.shadowOffsetY = 3;
+
   beginShape();
-  // 繪製曲線必須要有起始與結束的控制點，否則第一點與最後一點會消失
   if (routePoints.length > 0) {
     curveVertex(routePoints[0].x, routePoints[0].y); 
     for (let p of routePoints) {
@@ -205,6 +211,7 @@ function drawRoute() {
     curveVertex(routePoints[routePoints.length - 1].x, routePoints[routePoints.length - 1].y);
   }
   endShape();
+  pop();
 }
 
 function drawTreasureMark(p) {
@@ -263,24 +270,38 @@ class TimeNode {
     push();
     translate(this.pos.x, this.pos.y + this.bounce);
 
-    // 鼠標移到節點上方的黃色光暈特效
+    // 1. 點擊後的擴散閃爍特效
+    if (this._sparkleTimer > 0) {
+      let progress = (30 - this._sparkleTimer) / 30;
+      noFill();
+      stroke(255, 255, 200, lerp(255, 0, progress));
+      strokeWeight(4 * (1 - progress));
+      ellipse(0, 0, lerp(this.size, this.size * 10, progress));
+      this._sparkleTimer--;
+    }
+
+    // 2. 鼠標移到節點上方的脈動黃色光暈
     if (this.hoverAnim > 0) {
-      drawingContext.shadowBlur = 25 * this.hoverAnim;
-      drawingContext.shadowColor = 'rgba(255, 215, 0, ' + this.hoverAnim + ')';
-      // 底層發光環
+      let pulse = sin(frameCount * 0.15) * 8;
+      drawingContext.shadowBlur = (30 + pulse) * this.hoverAnim;
+      drawingContext.shadowColor = 'rgba(255, 215, 0, ' + (0.5 + 0.5 * this.hoverAnim) + ')';
+      
       noStroke();
-      fill(255, 255, 0, 50 * this.hoverAnim);
-      ellipse(0, 0, this.size * 2);
+      fill(255, 215, 0, 40 * this.hoverAnim);
+      ellipse(0, 0, (this.size * 2.2) + pulse);
     }
     
-    // 繪製「開花」效果 (隨 hoverAnim 放大)
+    // 3. 繪製「旋轉開花」效果
     if (this.hoverAnim > 0.01) {
-      fill(255, 182, 193, 200 * this.hoverAnim); // 粉色花瓣
+      push();
+      rotate(frameCount * 0.03); 
+      fill(255, 182, 193, 180 * this.hoverAnim); 
       noStroke();
       for (let i = 0; i < 5; i++) {
         rotate(TWO_PI / 5);
-        ellipse(15 * this.hoverAnim, 0, 20 * this.hoverAnim, 10 * this.hoverAnim);
+        ellipse(18 * this.hoverAnim, 0, 22 * this.hoverAnim, 12 * this.hoverAnim);
       }
+      pop();
     }
 
     // 重置發光（避免影響核心節點）
@@ -296,11 +317,11 @@ class TimeNode {
     fill(46, 26, 20); // 更深的墨水色
     noStroke();
     textFont('Special Elite'); // 使用復古字體
-    textSize(18); // 放大字體，更易讀
+    textSize(22); // 放大字體
     textAlign(CENTER);
     textStyle(BOLD);
-    // 位置下移一點 (從 15 移到 40)
-    text(this.label, 0, 40);
+    // 位置下移，確保不擋住開花特效
+    text(this.label, 0, 55);
     pop();
   }
 
